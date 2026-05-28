@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>证书与密钥管理 - xPAM</title>
+    <link rel="stylesheet" href="assets/css/common.css" />
+    <link rel="stylesheet" href="assets/css/cert-key.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <!-- 顶部导航 -->
+      <nav class="topbar">
+        <div class="brand">
+          <div class="brand-badge">xP</div>
+          <div class="brand-meta">
+            <h1>xPAM 控制台原型</h1>
+            <p>凭据管理与密码生命周期管理</p>
+          </div>
+        </div>
+        <div class="nav-pills">
+          <a href="index.html" class="pill">总览</a>
+          <a href="vault.html" class="pill">保险库</a>
+          <a href="lifecycle.html" class="pill">生命周期</a>
+          <a href="passwordless.html" class="pill">无密码接入</a>
+          <a href="cert-key.html" class="pill active">证书与密钥</a>
+          <a href="audit.html" class="pill">审计中心</a>
+        </div>
+        <div class="top-actions">
+          <button class="primary-btn" onclick="openModal()">新增凭据</button>
+        </div>
+      </nav>
+
+      <!-- 页面标题 -->
+      <header class="hero" style="padding: 30px 40px; text-align: left; align-items: flex-start;">
+        <h2 class="hero-title" style="font-size: 28px;">证书与密钥管理</h2>
+        <p class="hero-desc" style="max-width: 800px; margin: 10px 0 0 0;">
+          统一管理 SSH Key、API Key 与 X.509 证书。支持证书自动发现、到期预警、续期重部署以及密钥在 HSM 中的全生命周期托管。
+        </p>
+      </header>
+
+      <!-- 表格区域 -->
+      <section class="table-container">
+        <!-- 筛选工具栏 -->
+        <div class="table-toolbar">
+          <div class="filter-group">
+            <input type="text" class="filter-input" id="searchInput" placeholder="搜索名称或关联资产..." oninput="filterTable()" />
+            <select class="filter-select" id="typeFilter" onchange="filterTable()">
+              <option value="all">所有类型</option>
+              <option value="cert">X.509 证书</option>
+              <option value="ssh">SSH 密钥</option>
+              <option value="api">API Token</option>
+            </select>
+            <select class="filter-select" id="statusFilter" onchange="filterTable()">
+              <option value="all">所有状态</option>
+              <option value="active">正常有效</option>
+              <option value="warning">即将过期</option>
+              <option value="danger">已过期/异常</option>
+            </select>
+          </div>
+          <div class="top-actions">
+            <button class="ghost-btn" onclick="openRotateModal()">批量轮换</button>
+            <button class="ghost-btn">导出报表</button>
+          </div>
+        </div>
+
+        <!-- 数据表格 -->
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width: 40px;"><input type="checkbox" id="selectAll" onclick="toggleAllCheckboxes()" /></th>
+              <th>凭据名称</th>
+              <th>类型</th>
+              <th>关联资产/应用</th>
+              <th>到期时间</th>
+              <th>状态</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <!-- 动态渲染数据 -->
+          </tbody>
+        </table>
+
+        <!-- 分页器 -->
+        <div class="pagination">
+          <span id="pageInfo">共 12 条记录，当前 1/2 页</span>
+          <div class="page-controls">
+            <button class="page-btn" onclick="prevPage()">上一页</button>
+            <button class="page-btn active">1</button>
+            <button class="page-btn">2</button>
+            <button class="page-btn" onclick="nextPage()">下一页</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 详情抽屉 (Drawer) -->
+    <div class="drawer-overlay" id="detailDrawer" onclick="closeDrawer(event)">
+      <div class="drawer" onclick="event.stopPropagation()">
+        <div class="drawer-header">
+          <h3 id="drawerTitle">凭据详情</h3>
+          <button class="close-btn" onclick="closeDrawer(true)">&times;</button>
+        </div>
+        <div class="drawer-body">
+          <div class="detail-group">
+            <div class="detail-label">凭据类型 & 算法</div>
+            <div class="detail-value" id="drawerType">X.509 证书 (RSA-2048)</div>
+          </div>
+          <div class="detail-group">
+            <div class="detail-label">签发者 (Issuer)</div>
+            <div class="detail-value">DigiCert Global Root CA</div>
+          </div>
+          <div class="detail-group">
+            <div class="detail-label">有效期</div>
+            <div class="detail-value" id="drawerExpiry">2026-10-01 23:59:59</div>
+          </div>
+          <div class="detail-group">
+            <div class="detail-label">关联策略</div>
+            <div class="detail-value">到期前 30 天预警 / 到期前 7 天自动续期</div>
+          </div>
+          <div class="detail-group">
+            <div class="detail-label">HSM 托管状态</div>
+            <div class="detail-value" style="color: var(--success);">已托管 (私钥不可导出)</div>
+          </div>
+          <div class="detail-group">
+            <div class="detail-label">最近审计事件</div>
+            <div class="detail-value" style="font-family: var(--mono); font-size: 12px; color: var(--muted);">
+              [2026-05-28 10:00:00] 系统自动检测证书有效性 (成功)<br>
+              [2026-05-20 14:32:11] admin 发起自动续期配置变更 (审批通过)
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 新增/轮换 弹窗 (Modal) -->
+    <div class="modal-overlay" id="actionModal">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 id="modalTitle">新增凭据</h3>
+          <button class="close-btn" style="font-size: 20px;" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>凭据名称</label>
+            <input type="text" id="credNameInput" placeholder="输入标识名称" />
+          </div>
+          <div class="form-group">
+            <label>凭据类型</label>
+            <select>
+              <option>X.509 证书</option>
+              <option>SSH 密钥对</option>
+              <option>API Token</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>所属安全域</label>
+            <select>
+              <option>核心生产域</option>
+              <option>第三方供应商域</option>
+              <option>内部办公域</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label>操作理由 (审计要求)</label>
+            <input type="text" placeholder="请输入工单号或变更理由" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="ghost-btn" onclick="closeModal()">取消</button>
+          <button class="primary-btn" onclick="submitModal()">提交审批</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="assets/js/cert-key.js"></script>
+  </body>
+</html>
